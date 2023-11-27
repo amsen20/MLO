@@ -210,6 +210,7 @@ functor LexUtils(Token: Topdec_TOKENS): LEX_UTILS =
 	   | "then"	 => keyword THEN
 	   | "type"	 => keyword TYPE
 	   | "val"	 => keyword VAL
+	   | "oval"  => keyword OVAL
 	   | "where"	 => keyword WHERE
 	   | "with"	 => keyword WITH
 	   | "withtype"	 => keyword WITHTYPE

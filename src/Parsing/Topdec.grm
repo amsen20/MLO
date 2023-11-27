@@ -120,6 +120,9 @@ type arg = unit
         | INFIXR | LET | LOCAL | NONFIX | OF | OP | OPEN | ORELSE
         | RAISE | REC | THEN | TYPE | VAL | WITH | WITHTYPE | WHILE
 
+(* Reserved words for adding a temporary ownership: *)
+        | OVAL
+
 (* Symbolic reserved words: *)
         | LPAREN | RPAREN | LBRACKET | RBRACKET | LBRACE | RBRACE
         | COMMA | COLON | SEMICOLON | DOTDOTDOT | UNDERBAR | BAR
@@ -365,6 +368,8 @@ type arg = unit
 %right  TYPE            (* L/R is arbitrary. *)
 %right  VAL             (* L/R is arbitrary. *)
 
+%right  OVAL            (* L/R is arbitrary. *)
+
 %right  AND
 %left   DARROW          (* L/R is arbitrary. *)
 %left   BAR             (* L/R is arbitrary. *)
@@ -396,7 +401,7 @@ type arg = unit
                 STRUCTURE ABSTYPE AND ANDALSO AS CASE DO DATATYPE ELSE
                 END EXCEPTION FN FUN HANDLE IF IN INFIX
                 INFIXR LET LOCAL NONFIX OF OP OPEN ORELSE
-                RAISE REC THEN TYPE VAL WHERE WITH WITHTYPE WHILE
+                RAISE REC THEN TYPE VAL OVAL WHERE WITH WITHTYPE WHILE
 
 %start          TopDec
 %%
@@ -691,6 +696,8 @@ AndValDesc_opt:
 
 
 OneSpec:  VAL ValDesc   ( VALspec (PP VALleft (right (info_on_valdesc ValDesc)),
+				   ValDesc) )
+        | OVAL ValDesc  ( VALspec (PP OVALleft (right (info_on_valdesc ValDesc)),
 				   ValDesc) )
         | TYPE TypDesc  ( TYPEspec (PP TYPEleft (right (info_on_typdesc TypDesc)),
 				    TypDesc) )
@@ -1029,6 +1036,9 @@ MRule:    Pat DARROW Exp_
 OneDec_sans_LOCAL:
           VAL ValBind
 	                ( VALdec (PP VALleft (right (get_info_valbind ValBind)),
+				  [], ValBind) )
+        | OVAL ValBind
+	                ( VALdec (PP OVALleft (right (get_info_valbind ValBind)),
 				  [], ValBind) )
         | VAL TyVarSeq1 ValBind
 	                ( VALdec (PP VALleft (right (get_info_valbind ValBind)),

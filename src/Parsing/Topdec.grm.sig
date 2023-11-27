@@ -35,6 +35,7 @@ val RBRACKET:  'a * 'a -> (svalue,'a) token
 val LBRACKET:  'a * 'a -> (svalue,'a) token
 val RPAREN:  'a * 'a -> (svalue,'a) token
 val LPAREN:  'a * 'a -> (svalue,'a) token
+val OVAL:  'a * 'a -> (svalue,'a) token
 val WHILE:  'a * 'a -> (svalue,'a) token
 val WITHTYPE:  'a * 'a -> (svalue,'a) token
 val WITH:  'a * 'a -> (svalue,'a) token
