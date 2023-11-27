@@ -1,1 +1,1 @@
-       fun (f o g) x = f(g x);
+fun (f o g) x = f(g x);

@@ -1,1 +1,1 @@
-       fun apply f x = f x
+fun apply f x = f x

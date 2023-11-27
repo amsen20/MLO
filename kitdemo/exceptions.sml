@@ -17,5 +17,5 @@ in
   fun f(l) = 
       hd(tl(tl l)) handle _ => raise error_f
 end
-     
-val r = f[1,2,3,4];
+
+val r = f [1,2,3,4];
