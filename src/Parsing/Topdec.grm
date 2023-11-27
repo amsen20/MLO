@@ -697,8 +697,6 @@ AndValDesc_opt:
 
 OneSpec:  VAL ValDesc   ( VALspec (PP VALleft (right (info_on_valdesc ValDesc)),
 				   ValDesc) )
-        | OVAL ValDesc  ( VALspec (PP OVALleft (right (info_on_valdesc ValDesc)),
-				   ValDesc) )
         | TYPE TypDesc  ( TYPEspec (PP TYPEleft (right (info_on_typdesc TypDesc)),
 				    TypDesc) )
         | EQTYPE TypDesc
