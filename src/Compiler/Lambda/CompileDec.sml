@@ -578,7 +578,7 @@ local
 
 (*The algorithm used in this pattern match compiler is described in
  PETER SESTOFT: ML pattern match compilation and partial evaluation.  In DANVY,
- GLÜCK & THIEMANN (eds): Dagstuhl Seminar on Partial Evaluation (= Lecture
+ GLï¿½CK & THIEMANN (eds): Dagstuhl Seminar on Partial Evaluation (= Lecture
  Notes in Computer Science (no.?)) 1996.
  ftp://ftp.dina.kvl.dk/pub/Staff/Peter.Sestoft/papers/match.ps.gz
 
@@ -992,10 +992,10 @@ Report: Opt:
       | string_from_con (Tuple {arity}) = "a_tuple"
 
 (*TODO 06/01/1998 10:55. tho.  kan man bruge indkanttallet ("refs") til
-noget?  F. eks. til at se, om koden er død (fordi der er redundante regler)?
-Problemet er, hvis der kan forekomme en ifeq-knude med indgrad 0.  Så er den
-"død", & det er dens børn måske også, men det kan man ikke se af deres
-indkanttal, for det taltes op, da den "døde" ifeq-knude blev skabt ...
+noget?  F. eks. til at se, om koden er dï¿½d (fordi der er redundante regler)?
+Problemet er, hvis der kan forekomme en ifeq-knude med indgrad 0.  Sï¿½ er den
+"dï¿½d", & det er dens bï¿½rn mï¿½ske ogsï¿½, men det kan man ikke se af deres
+indkanttal, for det taltes op, da den "dï¿½de" ifeq-knude blev skabt ...
 Det finder du nok aldrig ud af.*)
 
   in
@@ -3029,6 +3029,11 @@ the 12 lines above are very similar to the code below
       case dec
         of VALdec(_, tyvars, valbind) =>
            compileValbind env (topLevel, valbind)
+
+         (* temporary for owner values *)
+         (* TODO add owner value data in returned enviroment *)
+         | OVALdec(_, tyvars, valbind) =>
+             compileValbind env (topLevel, valbind)
 
          | UNRES_FUNdec _ =>
              die "compileDec(UNRES_FUN)"

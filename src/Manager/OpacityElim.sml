@@ -186,6 +186,13 @@ structure OpacityElim: OPACITY_ELIM =
 	       val i' = on_info(rea,i)
 	   in (VALdec(i',tyvars,valbind'),rea')
 	   end
+	   (* temporary for owner values *)
+	   (* for now, it's looks like no change is needed for further *)
+	   | OVALdec(i,tyvars,valbind) =>
+	   let val (valbind', rea') = elim_valbind(rea,valbind)
+	       val i' = on_info(rea,i)
+	   in (OVALdec(i',tyvars,valbind'),rea')
+	   end
 	   | UNRES_FUNdec(i,tyvars,FValBind) => die "elim_dec.UNRES_FUNdec"
 	   | TYPEdec(i,typbind) =>
            let val i' = on_info(rea,i)

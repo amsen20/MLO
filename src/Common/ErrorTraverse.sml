@@ -206,6 +206,10 @@ structure ErrorTraverse : ERROR_TRAVERSE =
         of VALdec(i, tyvars, valbind) =>
              check i // walk_Valbind valbind
 
+         (* temporary owner values *)
+         | OVALdec(i, tyvars, valbind) =>
+             check i // walk_Valbind valbind
+
          | UNRES_FUNdec _ =>
              Crash.impossible "ErrorTraverse.walk_Dec(UNRES_FUN)"
 

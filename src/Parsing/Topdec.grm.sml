@@ -3673,7 +3673,7 @@ end
  = MlyValue.OneDec_sans_LOCAL (fn _ => let val  (ValBind as ValBind1)
  = ValBind1 ()
  in (
- VALdec (PP OVALleft (right (get_info_valbind ValBind)),
+ OVALdec (PP OVALleft (right (get_info_valbind ValBind)),
 				  [], ValBind) 
 )
 end)

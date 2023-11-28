@@ -50,6 +50,8 @@ sig
 
   and dec =
 	VALdec of info * tyvar list * valbind |
+      (* temporary dec constructor for owner values *)
+      OVALdec of info * tyvar list * valbind |
 	UNRES_FUNdec of info * tyvar list * FValBind |
 		(* TEMPORARY: removed when resolving infixes after parsing. *)
 	TYPEdec of info * typbind |
@@ -188,7 +190,7 @@ sig
   val find_topmost_id_in_atpat: atpat -> string option
 
   (*is_'true'_'nil'_etc & is_'it' are used to enforce some syntactic
-   restrictions (Definition, §2.9 & §3.5).*)
+   restrictions (Definition, ï¿½2.9 & ï¿½3.5).*)
 
   val is_'true'_'nil'_etc : id -> bool
   val is_'it' : id -> bool

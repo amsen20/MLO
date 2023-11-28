@@ -643,6 +643,10 @@ structure Infixing: INFIXING =
         of VALdec(i, tyvars, valbind) =>
   	     (emptyB, VALdec(i, tyvars, resolveValbind(iBas, valbind)))
 
+         (* temporary for owner values *)
+         | OVALdec(i, tyvars, valbind) =>
+  	     (emptyB, OVALdec(i, tyvars, resolveValbind(iBas, valbind)))
+
          | UNRES_FUNdec(i, tyvars, fvalbind) =>
              (emptyB, VALdec(i, tyvars, resolveFValBind(iBas, fvalbind)))
 

@@ -60,6 +60,10 @@ struct
 
   and dec =
         VALdec of info * tyvar list * valbind |
+        
+        (* temporary dec constructor for owner values *)
+        OVALdec of info * tyvar list * valbind |
+        
         UNRES_FUNdec of info * tyvar list * FValBind |
         TYPEdec of info * typbind |
         DATATYPEdec of info * datbind |
@@ -176,6 +180,7 @@ struct
   and get_info_dec obj =
     case obj of
       VALdec x => (#1) x
+    | OVALdec x => (#1) x
     | UNRES_FUNdec x => (#1 x)
     | TYPEdec x => (#1) x
     | DATATYPEdec x => (#1) x
@@ -313,6 +318,7 @@ struct
     and map_dec_info f (dec : dec) : dec =
       case dec of
         VALdec(i, tyvars, valbind) => VALdec(f i, tyvars, map_valbind_info f valbind)
+      | OVALdec(i, tyvars, valbind) => OVALdec(f i, tyvars, map_valbind_info f valbind)
       | UNRES_FUNdec(i, tyvars, FValBind) =>
           UNRES_FUNdec(f i, tyvars, map_FValBind_info f FValBind)
       | TYPEdec(i,typbind) =>
@@ -524,7 +530,7 @@ struct
 
 
   (*is_'true'_'nil'_etc & is_'it' are used to enforce SOME syntactic
-   restrictions (Definition, §2.9 & §3.5).*)
+   restrictions (Definition, ï¿½2.9 & ï¿½3.5).*)
 
   fun is_'true'_'nil'_etc id =
     id = Ident.id_TRUE orelse
@@ -707,6 +713,12 @@ struct
                      childsep=NOSEP
                      }
 
+         | OVALdec(_, tyvars, valbind) =>
+             NODE{start="oval ", finish="", indent=4,
+                     children = list_from_opt (layoutTyvarseq tyvars)
+                                @ [layoutValbind valbind],
+                     childsep=NOSEP
+                     }
 
          | UNRES_FUNdec _ =>
              LEAF "<UNRES_FUN>"

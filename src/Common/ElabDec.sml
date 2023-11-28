@@ -718,6 +718,58 @@ structure ElabDec: ELABDEC =
                 OG.VALdec (out_i, ExplicitTyVars, out_valbind))
              end
 
+         (* temporary owner values *)
+         (* it looks like it is enough, owner values does not change type check *)
+
+         | IG.OVALdec (i, ExplicitTyVars, valbind) =>
+             let
+               val U = ListHacks.union (ExplicitTyVars,
+                       ListHacks.minus (Environments.unguarded_valbind valbind, C.to_U C))
+               val _ = Level.push ()
+               val (S, VE, out_valbind) =
+                     elab_valbind (C.plus_U (C, U), valbind)    (* plus_U creates levels for the explicit tyvars in U *)
+                     handle E => (Level.pop(); raise E)
+               val _ = Level.pop()
+
+               val VE' = C.close (S onC C, valbind, VE)
+
+(*for debugging
+               fun pr_id VE id =
+                 case C.lookup_longid (C.plus_VE(C,VE)) (Ident.mk_LongId [id])
+                   of SOME(VE.LONGVAR sigma) => print (id ^ ": " ^ TypeScheme.string sigma ^ "\n")
+                    | _ => ()
+ *)
+
+               val out_i = case ListHacks.intersect (ExplicitTyVars, C.to_U C)
+                             of [] => okConv i
+                              | explicittyvars => errorConv
+                               (i, ErrorInfo.TYVARS_SCOPED_TWICE
+                                    (map TyVar.from_ExplicitTyVar explicittyvars))
+
+               val out_valbind = insert_type_info_in_valbind (VE', out_valbind)
+
+             (*The side condition ``U n tyvars VE' = {}'' is enforced partly
+              by disallowing unification of free explicit tyvars (giving the
+              error message
+
+                      (fn x => let val y : 'a = x in y y end) 666 ;
+                                       ^^^^^^^^^^
+               Type clash,
+                  type of left-hand side pattern:     'a
+                  type of right-hand side expression: int).
+
+              And partly the side condition is enforced by the restriction
+              that the same explicit tyvar may not be scoped at two
+              valbinds within each other (Definition 1997, sec. 2.9, last
+              bullet).  The latter is checked above by checking whether
+              any of `ExplicitTyVars' are in U of C (I hope that does it?)
+              24/01/1997 15:38. tho.*)
+
+             in
+               (S, [], E.from_VE VE',
+                OG.OVALdec (out_i, ExplicitTyVars, out_valbind))
+             end
+
            (* `fun'-declaration *)
          | IG.UNRES_FUNdec _ => impossible "elab_dec(UNRES_FUN)"
 
@@ -2151,6 +2203,8 @@ let
     (case dec of
        VALdec(i, tyvars, valbind) =>
          VALdec(resolve_i i, tyvars, resolve_valbind valbind)
+     | OVALdec(i, tyvars, valbind) =>
+         OVALdec(resolve_i i, tyvars, resolve_valbind valbind)
      | UNRES_FUNdec _ => impossible "resolve_dec(UNRES_FUNdec)"
      | TYPEdec _ => dec
      | DATATYPEdec(i,datbind) => DATATYPEdec(resolve_i i,datbind)

@@ -1036,7 +1036,7 @@ OneDec_sans_LOCAL:
 	                ( VALdec (PP VALleft (right (get_info_valbind ValBind)),
 				  [], ValBind) )
         | OVAL ValBind
-	                ( VALdec (PP OVALleft (right (get_info_valbind ValBind)),
+	                ( OVALdec (PP OVALleft (right (get_info_valbind ValBind)),
 				  [], ValBind) )
         | VAL TyVarSeq1 ValBind
 	                ( VALdec (PP VALleft (right (get_info_valbind ValBind)),

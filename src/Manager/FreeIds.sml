@@ -183,6 +183,8 @@ structure FreeIds:  FREE_IDS =
 
     and free_dec I =
       fn VALdec(_,_,valbind) => free_valbind I valbind
+       (* temporary for owner values *)
+       | OVALdec(_,_,valbind) => free_valbind I valbind
        | UNRES_FUNdec _ => die "free.UNRES_FUNdec"
        | TYPEdec(_,typbind) => free_typbind I typbind
        | DATATYPEdec(_,datbind) => free_datbind I datbind
