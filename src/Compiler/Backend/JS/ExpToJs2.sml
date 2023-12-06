@@ -809,7 +809,7 @@ fun toj C (P:{clos_p:bool}) (e:Exp) : ret =
                S f' => f' k
              | E e => wrapExp k e)
          end)
-  | L.LET {pat,bind,scope} =>
+  | L.LET {pat,owns,bind,scope} =>
     let val lvs = map #1 pat
         val binds = case bind of L.PRIM(UB_RECORDprim,binds) => binds
                                | _ => die "LET.unimplemented"

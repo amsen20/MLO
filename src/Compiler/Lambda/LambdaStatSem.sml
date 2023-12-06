@@ -811,13 +811,14 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
               val ts_arg = map #2 pat
           in valid_ts env ts_arg; Types [ARROWtype(ts_arg, NONE, ts_body, NONE)]
           end
-         | LET {pat=nil,bind,scope} =>   (* wild card *)
+         | LET {pat=nil,owns=false,bind,scope} =>   (* wild card *)
           let val ts = unTypeList "WILD" (type_lexp env bind)
             val _ = if List.null ts then ()
                     else die "LET.wild -- the binding must be surrounded by a drop expression"
           in type_lexp env scope
           end
-         | LET {pat,bind,scope} =>
+         | LET {pat=nil,owns=true,bind,scope} => die "LET.wild -- cannot bind owner value to wild card"
+         | LET {pat,owns,bind,scope} =>
           let val env_scope = foldl (fn ((lvar,tyvars,Type), env) =>
                                      add_lvar(lvar,(tyvars,Type),env)) env pat
 

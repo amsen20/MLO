@@ -37,7 +37,7 @@ structure LambdaBasics: LAMBDA_BASICS =
            | REAL _ => lamb
            | F64 _ => lamb
            | FN{pat,body} => FN{pat=pat,body=passTD f body}
-           | LET{pat,bind,scope} => LET{pat=pat,bind=passTD f bind,scope = passTD f scope}
+           | LET{pat,owns,bind,scope} => LET{pat=pat,owns=owns,bind=passTD f bind,scope = passTD f scope}
            | LETREGION{regvars,scope} => LETREGION{regvars=regvars,scope=passTD f scope}
            | FIX{functions,scope} => FIX{functions=map (fn {lvar, regvars, tyvars, Type, constrs, bind} =>
                                                         {lvar=lvar,regvars=regvars,tyvars=tyvars,
@@ -82,7 +82,7 @@ structure LambdaBasics: LAMBDA_BASICS =
               | REAL _ => lamb
               | F64 _ => lamb
               | FN{pat,body} => FN{pat=pat,body=passBU f body}
-              | LET{pat,bind,scope} => LET{pat=pat,bind=passBU f bind,scope = passBU f scope}
+              | LET{pat,owns,bind,scope} => LET{pat=pat,owns=owns,bind=passBU f bind,scope = passBU f scope}
               | LETREGION{regvars,scope} => LETREGION{regvars=regvars,scope=passBU f scope}
               | FIX{functions,scope} => FIX{functions=map (fn {lvar, regvars, tyvars, Type, constrs, bind} =>
                                                               {lvar=lvar,regvars=regvars,tyvars=tyvars,Type=Type,
@@ -126,7 +126,7 @@ structure LambdaBasics: LAMBDA_BASICS =
            | REAL _ => new_acc
            | F64 _ => new_acc
            | FN{pat,body} => foldTD f new_acc body
-           | LET{pat,bind,scope} => foldTD f (foldTD f new_acc bind) scope
+           | LET{pat,owns,bind,scope} => foldTD f (foldTD f new_acc bind) scope
            | LETREGION{regvars,scope} => foldTD f new_acc scope
            | FIX{functions,scope} => foldTD f (foldl' (foldTD f) new_acc  (map #bind functions)) scope
            | APP(lamb1, lamb2, _) => foldTD f (foldTD f new_acc lamb1) lamb2
@@ -166,7 +166,7 @@ structure LambdaBasics: LAMBDA_BASICS =
          | F64 _ => lamb
          | STRING _ => lamb
          | FN{pat,body} => FN{pat=pat,body=f body}
-         | LET{pat,bind,scope} => LET{pat=pat,bind=f bind,scope=f scope}
+         | LET{pat,owns,bind,scope} => LET{pat=pat,owns=owns,bind=f bind,scope=f scope}
          | LETREGION{regvars,scope} => LETREGION{regvars=regvars,scope=f scope}
          | FIX{functions,scope} =>
            FIX{functions=map (fn {lvar,regvars,tyvars,Type,constrs,bind} =>
@@ -211,7 +211,7 @@ structure LambdaBasics: LAMBDA_BASICS =
          | F64 _ => ()
          | STRING _ => ()
          | FN{pat,body} => f body
-         | LET{pat,bind,scope} => (f bind; f scope)
+         | LET{pat,owns,bind,scope} => (f bind; f scope)
          | LETREGION{regvars,scope} => f scope
          | FIX{functions,scope} => (app (f o #bind) functions; f scope)
          | APP(e1,e2,_) => (f e1; f e2)
@@ -255,10 +255,10 @@ structure LambdaBasics: LAMBDA_BASICS =
                | FN{pat,body} => (app (fn (lv,_) => Lvars.is_inserted lv := true) pat;
                                   fv body;
                                   app (fn (lv,_) => Lvars.is_inserted lv := false) pat)
-               | LET{pat,bind,scope} => (fv bind;
+               | LET{pat,owns,bind,scope} => (fv bind;
                                          app (fn (lv,_,_) => Lvars.is_inserted lv := true) pat;
                                          fv scope;
-                                         app (fn (lv,_,_) => Lvars.is_inserted lv := false) pat)
+                                         app (fn (lv,_,_) => Lvars.is_inserted lv := false) pat)               
                | FIX{functions,scope} => (app (fn {lvar,...} => Lvars.is_inserted lvar := true) functions;
                                           app (fv o #bind) functions; fv scope;
                                           app (fn {lvar,...} => Lvars.is_inserted lvar := false) functions)
@@ -450,9 +450,9 @@ structure LambdaBasics: LAMBDA_BASICS =
             | FN{pat,body} => let val (pat', ren') = new_fnpat pat ren
                               in FN{pat=pat', body=on_e ren' body}
                               end
-            | LET{pat,bind,scope} => let val (pat', ren_bind, ren_scope) = new_letpat pat ren
-                                     in LET{pat=pat',bind=on_e ren_bind bind, scope=on_e ren_scope scope}
-                                     end
+            | LET{pat,owns,bind,scope} => let val (pat', ren_bind, ren_scope) = new_letpat pat ren
+                                     in LET{pat=pat',owns=owns,bind=on_e ren_bind bind, scope=on_e ren_scope scope}
+                                     end            
             | LETREGION{regvars,scope} => LETREGION{regvars=regvars,scope=on_e ren scope}
             | FIX{functions,scope} => let val (functions', ren') = on_functions ren on_e functions
                                       in FIX{functions=functions', scope=on_e ren' scope}
@@ -607,7 +607,7 @@ structure LambdaBasics: LAMBDA_BASICS =
                         in (S', (lvar, tyvars, on_Type S' tau)::atpats)
                         end)
             (S, []) atpats
-
+          
           fun f S lamb =
             let
               fun on_switch S (SWITCH(arg,selections,wildcard)) =
@@ -626,11 +626,12 @@ structure LambdaBasics: LAMBDA_BASICS =
                  | F64 _ => lamb
                  | FN{pat,body} => FN{pat = map (fn (lv, Type) => (lv, on_Type S Type)) pat,
                                       body = f S body}
-                 | LET{pat,bind,scope} => let val (S',pat') = on_let_pat S pat
+                 | LET{pat,owns,bind,scope} => let val (S',pat') = on_let_pat S pat
                                           in LET{pat = pat',
+                                                 owns = owns,
                                                  bind = f S' bind,
                                                  scope = f S scope}
-                                          end
+                                          end                 
                  | LETREGION{regvars,scope} => LETREGION{regvars=regvars,scope=f S scope}
                  | FIX{functions,scope} =>
                   let
@@ -789,7 +790,10 @@ structure LambdaBasics: LAMBDA_BASICS =
       fun pp_bl bl = String.concat (map (fn true => "1" | false => "0") bl)
       val layout = Lvars.Map.layoutMap {start="{",finish="}",eq="->",sep=","}
                                        (PP.LEAF o Lvars.pr_lvar)
-                                       (fn NONE => PP.LEAF "none"
+                                                   
+            (* temporary for adding owner values *)
+            
+            (fn NONE => PP.LEAF "none"
                                          | SOME bl => PP.LEAF (pp_bl bl))
       val pu = let open Pickle
                in Lvars.Map.pu Lvars.pu (optionGen(listGen(bool)))
@@ -834,12 +838,12 @@ structure LambdaBasics: LAMBDA_BASICS =
               let val E = foldl (fn ((lv,_),E) => add(lv,NONE,E)) E pat
               in FN{pat=pat,body=N E body}
               end
-            | LET{pat,bind,scope} =>
+            | LET{pat,owns,bind,scope} =>
               let val (pat,E') = foldr (fn ((lv,tvs,tau),(pat,E)) =>
                                            let val ((tvs,tau),obl) = normScheme (tvs,tau)
                                            in ((lv,tvs,tau)::pat, add(lv,obl,E))
                                            end) (nil,E) pat
-              in LET{pat=pat,bind=N E bind,scope=N E' scope}
+              in LET{pat=pat,owns=owns,bind=N E bind,scope=N E' scope}
               end
             | LETREGION{regvars,scope} => LETREGION{regvars=regvars,scope=N E scope}
             | FIX{functions,scope} =>
@@ -921,8 +925,8 @@ structure LambdaBasics: LAMBDA_BASICS =
                 | REAL _ => e
                 | F64 _ => e
                 | FN{pat,body} => FN{pat=pat,body=t true body}
-                | LET{pat,bind,scope} =>
-                  LET{pat=pat,bind=t false bind,scope=t tail scope}
+                | LET{pat,owns,bind,scope} =>
+                  LET{pat=pat,owns=owns,bind=t false bind,scope=t tail scope}
                 | LETREGION{regvars,scope} => LETREGION{regvars=regvars,scope=t false scope}
                 | FIX{functions,scope} =>
                   let val functions = map (fn {lvar,regvars,tyvars,Type,constrs,bind} =>

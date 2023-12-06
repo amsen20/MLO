@@ -467,7 +467,7 @@ structure OptLambda : OPT_LAMBDA =
             (case eq_pat m (pat,pat') of
                  SOME m => eq_lamb0 m (body,body')
                | NONE => false)
-          | eq_lamb0 m (LET{pat=[(lv,tvs,t)],bind=b,scope=s},LET{pat=[(lv',tvs',t')],bind=b',scope=s'}) =
+          | eq_lamb0 m (LET{pat=[(lv,tvs,t)],owns=_,bind=b,scope=s},LET{pat=[(lv',tvs',t')],owns=_,bind=b',scope=s'}) =
                  length tvs = length tvs'
                  andalso
                  let
@@ -559,11 +559,11 @@ structure OptLambda : OPT_LAMBDA =
             | PRIM(DECONprim{con,...},es) => (check_con con ; app (c b x) es)
             | PRIM(EXCONprim ex,es) => (check_excon ex x ; app (c b x) es)
             | PRIM(DEEXCONprim ex,es) => (check_excon ex x ; app (c b x) es)
-            | LET{pat,bind,scope} =>
+            | LET{pat,owns,bind,scope} =>
              let fun add [] b = b
                    | add ((lv,_,_)::pat) b = add pat (lv::b)
              in c b x bind; c (add pat b) x scope
-             end
+             end            
             | FN{pat,body} =>
              let fun add [] b = b
                    | add ((lv,_)::pat) b = add pat (lv::b)
@@ -613,7 +613,7 @@ structure OptLambda : OPT_LAMBDA =
                | VAR{lvar,...} => if Lvars.eq(lvar,lv) then raise Bad else true
                | PRIM(CCALLprim{name="__real_to_f64",...},[VAR _]) => true
                | PRIM(_, es) => safeLooks es
-               | LET{pat,bind,scope} => if safeLook bind then safeLook scope
+               | LET{pat,owns,bind,scope} => if safeLook bind then safeLook scope
                                         else check scope
                | SWITCH_C sw => safeLook_sw safeLook sw
                | FIX {functions,scope} =>
@@ -639,7 +639,7 @@ structure OptLambda : OPT_LAMBDA =
                | PRIM(CCALLprim{name="__real_to_f64",...},[e' as VAR {lvar,...}]) =>
                  if Lvars.eq(lvar,lv) then e' else e
                | PRIM(p,es) => PRIM(p,map subst es)
-               | LET{pat,bind,scope} => LET{pat=pat,bind=subst bind,scope=subst scope}
+               | LET{pat,owns,bind,scope} => LET{pat=pat,owns=owns,bind=subst bind,scope=subst scope}
                | FIX{functions,scope} =>
                  FIX{functions=map (fn {lvar,regvars,tyvars,Type,constrs,bind} =>
                                        {lvar=lvar,regvars=regvars,
@@ -757,7 +757,7 @@ structure OptLambda : OPT_LAMBDA =
          val scope = FIX{functions=[{lvar=lv_f,regvars=[],tyvars=[],Type=tau,constrs=[],
                                      bind=FN{pat=[(lv_y,tau_2')],body=body''}}],
                          scope=VAR{lvar=lv_f,instances=[],regvars=[]}}
-         val e_0 = LET{pat=[(lv_x,[],tau_1')],bind=lamb',scope=scope}
+         val e_0 = LET{pat=[(lv_x,[],tau_1')],owns=false,bind=lamb',scope=scope}
      in new_instance e_0
      end
      | specialize_bind _ _ _ = die "specialize_bind"
@@ -795,8 +795,9 @@ structure OptLambda : OPT_LAMBDA =
                    if Lvars.eq(lvar,lv)
                    then VAR{lvar=lv',instances=instances,regvars=regvars}
                    else e
-                 | LET{pat,bind,scope} =>
+                 | LET{pat,owns,bind,scope} =>
                    LET{pat=pat,
+                       owns=owns,
                        bind=f bind,
                        scope= if List.exists (fn (v,_,_) => Lvars.eq(v,lv)) pat
                               then scope
@@ -835,7 +836,7 @@ structure OptLambda : OPT_LAMBDA =
                           scope=x}
          val (args1,arg,args2) = pick2 n args
          val e = if safeLambdaExp arg orelse safeLambdaExps args1 then
-                   LET{pat=[(p_lv,nil,p_t)],bind=arg,
+                   LET{pat=[(p_lv,nil,p_t)],owns=false,bind=arg,
                        scope=fixF (APP(VAR{lvar=lv_f',instances=[],regvars=[]},
                                        ubargs (args1 @ args2),
                                        tailpos))
@@ -844,11 +845,11 @@ structure OptLambda : OPT_LAMBDA =
                    let val lvts = map (fn t => (Lvars.newLvar(),t)) taus1'
                        fun lets nil nil s = s
                          | lets ((lv,t)::tvts) (e::es) s =
-                           LET{pat=[(lv,[],t)],bind=e,scope=lets tvts es s}
+                           LET{pat=[(lv,[],t)],owns=false,bind=e,scope=lets tvts es s}
                          | lets _ _ _ = die "specializeN_bind.lets"
                        val args1' = map (fn (lv,_) => VAR{lvar=lv,instances=[],regvars=[]}) lvts
                    in lets lvts args1
-                           (LET{pat=[(p_lv,nil,p_t)],bind=arg,
+                           (LET{pat=[(p_lv,nil,p_t)],owns=false,bind=arg,
                                 scope=fixF (APP(VAR{lvar=lv_f',instances=[],regvars=[]},
                                                 ubargs (args1' @ args2),
                                                 tailpos))
@@ -865,7 +866,7 @@ structure OptLambda : OPT_LAMBDA =
            VAR{instances=[],regvars=[],...} => true
          | INTEGER (_,t) => if tag_values() then eq_Type(t,int31Type) orelse eq_Type(t,int63Type) else true
          | F64 _ => true
-         | LET{pat,bind,scope} => simple_nonexpanding bind andalso simple_nonexpanding scope
+         | LET{pat,owns,bind,scope} => simple_nonexpanding bind andalso simple_nonexpanding scope
          | PRIM(SELECTprim _, [e]) => simple_nonexpanding e
          | PRIM(CCALLprim{name,...},[e]) =>
            (case name of
@@ -1124,7 +1125,7 @@ structure OptLambda : OPT_LAMBDA =
                   case e of
                       RAISE _ => SOME LvarMap.empty
                     | PRIM (_,lambs) => List.foldl join NONE (map exn lambs)
-                    | LET {pat,bind,scope} => join (exn bind, exn scope)
+                    | LET {pat,owns,bind,scope} => join (exn bind, exn scope)
                     | APP (e1,e2,_) => join (exn e1, exn e2)
                     | FIX {functions,scope} => exn scope
                     | LETREGION {regvars,scope} => exn scope
@@ -1210,7 +1211,7 @@ structure OptLambda : OPT_LAMBDA =
       fun init e =
         case e
           of VAR{lvar,instances,regvars} => incr_use lvar
-           | LET{pat,bind,scope} => (app (Lvars.reset_use o #1) pat; init bind; init scope)
+           | LET{pat,owns,bind,scope} => (app (Lvars.reset_use o #1) pat; init bind; init scope)           
            | FN{pat,body} => (app (Lvars.reset_use o #1) pat; init body)
            | FIX{functions,scope} => (app (Lvars.reset_use o #lvar) functions;
                                       app (mark_lvar o #lvar) functions;
@@ -1226,7 +1227,7 @@ structure OptLambda : OPT_LAMBDA =
             | _ => false
 
       fun is_fn (FN _) = true
-        | is_fn (LET{pat,bind,scope}) = is_fn bind andalso is_fn scope
+        | is_fn (LET{pat,owns,bind,scope}) = is_fn bind andalso is_fn scope
         | is_fn (FIX{functions,scope}) = is_fn scope
         | is_fn _ = false
 
@@ -1611,19 +1612,19 @@ structure OptLambda : OPT_LAMBDA =
            | STRING _ => (lamb, CCONST lamb)
            | REAL _ => (lamb, CCONST lamb)
            | F64 _ => (lamb, CCONST lamb)
-           | LET{pat=[(lvar,tyvars,tau)],bind,scope} =>
+           | LET{pat=[(lvar,tyvars,tau)],owns,bind,scope} =>
                let
                  (* maybe let-float f64-binding outwards to open up for other optimisations *)
                  fun default () = (lvar,tyvars,tau,bind,scope,fail)
                  fun hoist () =
                      case bind of
-                         LET{pat=[(lv,[],tau')],bind=bind',scope=scope'} =>
+                         LET{pat=[(lv,[],tau')],owns=owns',bind=bind',scope=scope'} =>
                          if unbox_reals() (*andalso eq_Type(tau',f64Type)*) andalso simple_nonexpanding bind' then
                            (tick "reduce - let-floating";
-                            let val scope'' = LET{pat=[(lvar,[],tau)],bind=scope',
+                            let val scope'' = LET{pat=[(lvar,[],tau)],owns=owns',bind=scope',
                                                   scope=scope}
                             in (lv,[],tau',bind',scope'',
-                                (LET{pat=[(lv,[],tau')],bind=bind',scope=scope''},
+                                (LET{pat=[(lv,[],tau')],owns=owns',bind=bind',scope=scope''},
                                  CUNKNOWN))
                             end)
                          else default()
@@ -1643,7 +1644,7 @@ structure OptLambda : OPT_LAMBDA =
                         let val (tau,bind,scope) = (f64Type,real_to_f64 bind,
                                                     subst_real_lvar_f64_in_lamb lvar scope)
                             val () = Lvars.set_ubf64 lvar
-                        in (tau,bind,scope,(LET{pat=[(lvar,tyvars,tau)],bind=bind,scope=scope},
+                        in (tau,bind,scope,(LET{pat=[(lvar,tyvars,tau)],owns=owns,bind=bind,scope=scope},
                                             CUNKNOWN))
                         end)
                      else (tau,bind,scope,fail)
@@ -1666,7 +1667,7 @@ structure OptLambda : OPT_LAMBDA =
                                             val e = LET{pat=pat',bind=bind',scope=scope}
                                         in tick "reduce - dead-type"; (e,cv)
                                         end*)
-                      let val e = LET{pat=nil,bind=PRIM(DROPprim,[bind]),scope=scope}
+                      let val e = LET{pat=nil,owns=owns,bind=PRIM(DROPprim,[bind]),scope=scope}
                       in tick "reduce - wild"; (e,cv)
                       end
                   else case scope
@@ -1698,18 +1699,18 @@ structure OptLambda : OPT_LAMBDA =
                                     end
                                   | NONE => fail)
                end
-           | LET{pat=nil,bind,scope} =>
+           | LET{pat=nil,owns=owns,bind,scope} =>
                if safeLambdaExp bind then
                  (decr_uses bind; tick "reduce - dead-let"; reduce (env, (scope, cv)))
                else fail
-           | LET{pat,bind,scope} =>
+           | LET{pat,owns=owns,bind,scope} =>
                    (case bind of
                         PRIM(UB_RECORDprim, es) =>
                             if length pat <> length es then
                                 die "LET.bind"
                             else
                                 let val e : LambdaExp = List.foldl
-                                      (fn ((p,e),scope) => LET{pat=[p],bind=e,scope=scope})
+                                      (fn ((p,e),scope) => LET{pat=[p],owns=owns,bind=e,scope=scope})
                                       scope (ListPair.zip(pat,es))
                                 in  tick "reduce - let-split"
                                   ; reduce (env, (e,cv))
@@ -1753,6 +1754,7 @@ structure OptLambda : OPT_LAMBDA =
                            if single_arg_fn bind andalso not(lvar_in_lamb lvar bind) then
                              (tick "reduce - fix-let";
                               reduce (env, (LET{pat=[(lvar,tyvars,Type)],
+                                                owns=false,
                                                 bind=bind,scope=scope},cv)))
                            else fail
                           | _ => fail
@@ -1767,7 +1769,7 @@ structure OptLambda : OPT_LAMBDA =
 *)
           | APP(FN{pat,body=scope},bind,_) =>
                let val pat' = fn_to_let_pat pat
-               in tick "appfn-let"; reduce (env, (LET{pat=pat',bind=bind,scope=scope}, CUNKNOWN))
+               in tick "appfn-let"; reduce (env, (LET{pat=pat',owns=false,bind=bind,scope=scope}, CUNKNOWN))
                end
           | APP(VAR{lvar,instances,regvars=[]}, lamb2, tailpos) =>
                (case lookup_lvar(env, lvar) of
@@ -1792,12 +1794,12 @@ structure OptLambda : OPT_LAMBDA =
               else fail
           | APP(exp1, exp2, _) =>
                 let exception NoBetaReduction
-                    fun seekFN (LET{pat,bind,scope}, f) = seekFN(scope, f o (fn sc => LET{pat=pat,bind=bind,scope=sc}))
+                    fun seekFN (LET{pat,owns,bind,scope}, f) = seekFN(scope, f o (fn sc => LET{pat=pat,owns=owns,bind=bind,scope=sc}))
                       | seekFN (FIX{functions,scope}, f) = seekFN(scope, f o (fn sc => FIX{functions=functions,scope=sc}))
                       | seekFN (FN{pat,body}, f) = {pat=pat,body=body,f=f}
                       | seekFN _ = raise NoBetaReduction
                 in let val {pat, body, f} = seekFN (exp1, fn x => x)
-                       val res = f (LET{pat=fn_to_let_pat pat, bind=exp2, scope=body})
+                       val res = f (LET{pat=fn_to_let_pat pat, owns=false, bind=exp2, scope=body})
                    in tick "appletfn-fn"; reduce (env, (res, CUNKNOWN))
                    end handle NoBetaReduction => fail
                 end
@@ -1815,7 +1817,7 @@ structure OptLambda : OPT_LAMBDA =
                         PRIM(CCALLprim{name="__f64_to_real",...},[e]) =>
                         (tick "real unbox o box elimination - let";
                          SOME (f e))
-                      | LET{pat,bind,scope} => loop scope (f o (fn e => LET{pat=pat,bind=bind,scope=e}))
+                      | LET{pat,owns,bind,scope} => loop scope (f o (fn e => LET{pat=pat,owns=owns,bind=bind,scope=e}))
                       | _ => NONE
                 fun default () =
                     case loop e (fn x => x) of
@@ -1930,7 +1932,7 @@ structure OptLambda : OPT_LAMBDA =
                    val (body',_) = contr (env', body)
                in (FN{pat=pat,body=body'},CUNKNOWN)
                end
-              | LET{pat=(pat as [(lvar,tyvars,tau)]),bind,scope} =>
+              | LET{pat=(pat as [(lvar,tyvars,tau)]),owns,bind,scope} =>
                let val (bind', cv) = contr (env, bind)
                    val cv' = if noinline_lvar lvar then CUNKNOWN
                              else if (*is_small_closed_fn*) is_inlinable_fn lvar bind' then CFN{lexp=bind',large=false}
@@ -1950,12 +1952,12 @@ structure OptLambda : OPT_LAMBDA =
                                   end
                    val (scope',cv_scope) = contr (env', scope)
                    val cv_scope' = remove lvar cv_scope
-               in reduce (env, (LET{pat=pat,bind=bind',scope=scope'}, cv_scope'))
+               in reduce (env, (LET{pat=pat,owns=owns,bind=bind',scope=scope'}, cv_scope'))
                end
-              | LET{pat=nil,bind,scope} =>  (* wild card *)
+              | LET{pat=nil,owns,bind,scope} =>  (* wild card *)
                let val (bind', cv) = contr (env, bind)
                    val (scope',cv_scope) = contr (env, scope)
-               in reduce (env, (LET{pat=nil,bind=bind',scope=scope'}, cv_scope))
+               in reduce (env, (LET{pat=nil,owns=owns,bind=bind',scope=scope'}, cv_scope))
                end
               | PRIM(RECORDprim opt, lambs) =>
                let val lamb_cv = map (fn e => contr (env,e)) lambs
@@ -2273,7 +2275,7 @@ structure OptLambda : OPT_LAMBDA =
      fun traverse lamb =
        let fun f lamb =
              case lamb
-               of LET{pat=[(lvar,[],_)],bind=PRIM(RECORDprim _,lambs),scope} =>
+               of LET{pat=[(lvar,[],_)],owns=_,bind=PRIM(RECORDprim _,lambs),scope} =>
                  (mark_lvar lvar; app f lambs; f scope)
                 | PRIM(SELECTprim _, [VAR{instances=[],...}]) => ()
                 | VAR{lvar,...} => unmark_lvar lvar
@@ -2295,7 +2297,7 @@ structure OptLambda : OPT_LAMBDA =
                     VAR{lvar=lvar',instances=[],regvars=[]}
                  end
                 | NONE => lamb)
-           | LET{pat=[(lvar,[],Type)],bind=PRIM(RECORDprim _, lambs),scope} =>
+           | LET{pat=[(lvar,[],Type)],owns=owns,bind=PRIM(RECORDprim _, lambs),scope} =>
               if is_marked_lvar lvar then
                 let val lvars = map (fn _ => Lvars.newLvar()) lambs
                     val env' = LvarMap.add(lvar,lvars,env)
@@ -2306,6 +2308,7 @@ structure OptLambda : OPT_LAMBDA =
                       | mk_lamb (lv::lvs) (tau::taus) (lamb::lambs) =
                         ((if eq_Type(tau,f64Type) then Lvars.set_ubf64 lv else ());
                          LET{pat=[(lv,[],tau)],
+                             owns=owns,
                              bind=transf env lamb,
                              scope=mk_lamb lvs taus lambs})
                       | mk_lamb _ _ _ = die "eliminate_explicit_records3"
@@ -2351,7 +2354,7 @@ structure OptLambda : OPT_LAMBDA =
      fun traverse lamb =
        let fun f lamb =
              case lamb
-               of LET{pat=[(lvar,[],_)],bind=PRIM(BLOCKF64prim,lambs),scope} =>
+               of LET{pat=[(lvar,[],_)],owns=_,bind=PRIM(BLOCKF64prim,lambs),scope} =>
                  (mark_lvar lvar; app f lambs; f scope)
                 | PRIM(CCALLprim{name="__blockf64_sub_f64",...}, [VAR{instances=[],...},INTEGER _]) => ()
                 | VAR{lvar,...} => unmark_lvar lvar
@@ -2375,7 +2378,7 @@ structure OptLambda : OPT_LAMBDA =
                      real_to_f64(VAR{lvar=lvar',instances=[],regvars=[]})
                   end
                 | NONE => lamb)
-           | LET{pat=[(lvar,[],_)],bind=PRIM(BLOCKF64prim,lambs),scope} =>
+           | LET{pat=[(lvar,[],_)],owns=owns,bind=PRIM(BLOCKF64prim,lambs),scope} =>
              if is_marked_lvar lvar then
                let val lvars_and_lambs = map (fn e => (Lvars.newLvar(),e)) lambs
                    val lvars = map #1 lvars_and_lambs
@@ -2383,6 +2386,7 @@ structure OptLambda : OPT_LAMBDA =
                    fun build [] = transf env' scope
                      | build ((lv,lamb)::pairs) =
                        LET{pat=[(lv,[],realType)],
+                           owns=owns,
                            bind=f64_to_real(transf env lamb),
                            scope=build pairs}
                in tick "eliminate explicit blockf64 - binding";
@@ -2427,7 +2431,7 @@ structure OptLambda : OPT_LAMBDA =
                             val () = Lvars.set_ubf64 lv
                             val a = VAR{lvar=lv,instances=nil,regvars=nil}
                             val () = tick "CSE - f64"
-                        in LET{pat=[(lv,[],f64Type)],bind=e1,scope=PRIM(p,[a,a])}
+                        in LET{pat=[(lv,[],f64Type)],owns=false,bind=e1,scope=PRIM(p,[a,a])}
                         end
                       else PRIM(p,[e1,e2])
                    end
@@ -2455,20 +2459,20 @@ structure OptLambda : OPT_LAMBDA =
    fun hoist_blockf64_allocations e =
        let fun hoist e =
                case e of
-                   LET{pat=pat as [(lv,_,_)],bind,scope} =>
+                   LET{pat=pat as [(lv,_,_)],owns,bind,scope} =>
                    let val bind = hoist bind
                        val scope = hoist scope
                    in case scope of
-                          LET{pat=pat2,bind=bind2 as PRIM(CCALLprim{name="allocStringML",...},[e]),
+                          LET{pat=pat2,owns=owns2,bind=bind2 as PRIM(CCALLprim{name="allocStringML",...},[e]),
                               scope=scope2} => (* yes *)
                           if not(lvar_in_lamb lv e) andalso (safeLambdaExp e orelse safeLambdaExp bind) then
-                            LET{pat=pat2,bind=bind2,
-                                scope=LET{pat=pat,bind=bind,scope=scope2}}
+                            LET{pat=pat2,owns=owns2,bind=bind2,
+                                scope=LET{pat=pat,owns=owns,bind=bind,scope=scope2}}
                           else
-                            LET{pat=pat,bind=bind,
-                                scope=LET{pat=pat2,bind=bind2,scope=scope2}}
+                            LET{pat=pat,owns=owns,bind=bind,
+                                scope=LET{pat=pat2,owns=owns2,bind=bind2,scope=scope2}}
                         | _ =>
-                          LET{pat=pat,bind=bind,scope=scope}
+                          LET{pat=pat,owns=owns,bind=bind,scope=scope}
                    end
                  | _ => map_lamb hoist e
        in hoist e
@@ -2635,7 +2639,7 @@ structure OptLambda : OPT_LAMBDA =
     * ----------------------------------------------------------------- *)
 
    fun fix_conversion lamb =
-     let fun f (LET{pat=[(lvar,tyvars,Type)],bind=bind as FN _,scope=scope}) =
+     let fun f (LET{pat=[(lvar,tyvars,Type)],owns=false,bind=bind as FN _,scope=scope}) =
                  (tick "fix conversion";
                   FIX{functions=[{lvar=lvar,regvars=[],tyvars=tyvars,Type=Type,constrs=[],bind=bind}],
                       scope=scope})
@@ -2693,24 +2697,24 @@ structure OptLambda : OPT_LAMBDA =
            (case LvarMap.lookup env lvar
               of SOME DELAY_SIMPLE => APP(v, PRIM(RECORDprim {regvar=NONE}, []), NONE)
                | _ => v)
-          | LET{pat,bind,scope} =>
+          | LET{pat,owns,bind,scope} =>
               (case pat
                  of [(lvar,tyvars,Type)] =>
                   if null(tyvars) then
-                    LET{pat=pat,bind=f env bind, scope=f (add_lv(lvar,IGNORE,env)) scope}
+                    LET{pat=pat,owns=owns,bind=f env bind, scope=f (add_lv(lvar,IGNORE,env)) scope}
                   else (case bind of
                           FN _ => (* already a lambda abstraction; make no new abstraction *)
-                            LET{pat=pat,bind=f env bind, scope=f (add_lv(lvar,IGNORE,env)) scope}
+                            LET{pat=pat,owns=owns,bind=f env bind, scope=f (add_lv(lvar,IGNORE,env)) scope}
                         | non_expansive_bind =>
                             (* make lambda abstraction *)
                             let val Type' = ARROWtype([unit_Type], NONE, [Type], NONE)
                                 val pat' = [(lvar,tyvars,Type')]
                                 val bind' = FN{pat=[(Lvars.newLvar(),unit_Type)],body=f env bind}
                                 val scope' = f (LvarMap.add(lvar,DELAY_SIMPLE,env)) scope
-                            in LET{pat=pat',bind=bind',scope=scope'}
+                            in LET{pat=pat',owns=owns,bind=bind',scope=scope'}
                             end
                           )
-                  | nil => LET{pat=pat,bind=f env bind, scope=f env scope}
+                  | nil => LET{pat=pat,owns=owns,bind=f env bind, scope=f env scope}
                   | _ => die "functionalise_let. non-trivial patterns unimplemented.")
           | FIX{functions,scope} =>
             let val functions' =
@@ -2786,7 +2790,7 @@ structure OptLambda : OPT_LAMBDA =
                      else ()
                    | VAR {lvar,...} => if Lvars.eq(lv,lvar) orelse is_in_lv lvar lvs then raise NonSelect
                                        else ()
-                   | LET{pat=[(lv1,nil,t)],bind=PRIM (SELECTprim {index=j}, [VAR {lvar,...}]),scope} =>
+                   | LET{pat=[(lv1,nil,t)],owns=_,bind=PRIM (SELECTprim {index=j}, [VAR {lvar,...}]),scope} =>
                      if Lvars.eq(lv,lvar) andalso j=i then f (lv1::lvs) lv scope
                      else f lvs lv scope
                    | APP(VAR{lvar,...},PRIM(RECORDprim _,es),_) =>
@@ -2873,7 +2877,7 @@ structure OptLambda : OPT_LAMBDA =
 
          fun hoist (body, acc: (int * lvar) list) : LambdaExp * (int * lvar) list =
            case body
-             of LET{pat,bind,scope} =>
+             of LET{pat,owns=_,bind,scope} =>
                (case (pat, bind)
                   of ([(lv1,nil,pt)], PRIM(SELECTprim {index=n}, [VAR{lvar,instances=[],regvars=[]}])) =>
                     if Lvars.eq(lvar,lv) then hoist(scope,(n,lv1)::acc)
@@ -2990,7 +2994,7 @@ structure OptLambda : OPT_LAMBDA =
                                val S = mk_subst errFun (tyvars, instances)
                                val argTypes' = map f64TypeToRealTypeShallow argTypes
                                val tau = on_Type S (RECORDtype (argTypes',NONE))
-                           in LET{pat=[(lv_tmp, nil, tau)], bind=trans env arg,
+                           in LET{pat=[(lv_tmp, nil, tau)], owns=false, bind=trans env arg,
                                   scope=mk_app lv_tmp argTypes}
                            end
                     end
@@ -3015,10 +3019,11 @@ structure OptLambda : OPT_LAMBDA =
              let val env' = restrict_unbox_fix_env (env, map #lvar declared_lvars)
              in (frame_unbox_fix_env := env' ; lamb)
              end
-           | LET {pat,bind,scope} =>
+           | LET {pat,owns,bind,scope} =>
              let fun default () =
                      let val env' = List.foldl (fn ((lvar,_,_),e) => LvarMap.add(lvar,NORMAL_ARGS,e)) env pat
                      in LET{pat=pat,
+                            owns=owns,
                             bind=trans env bind,
                             scope=trans env' scope}
                      end
@@ -3030,7 +3035,7 @@ structure OptLambda : OPT_LAMBDA =
                            let val (lv_arg,t) = Vector.sub(vec,j) handle _ => die "unbox_fix.trans"
                            in if eq_Type(t,f64Type) then
                                 ( Lvars.set_ubf64 lv
-                                ; LET{pat=[(lv,nil,f64Type)],bind=VAR{lvar=lv_arg,instances=nil,regvars=nil},
+                                ; LET{pat=[(lv,nil,f64Type)],owns=owns,bind=VAR{lvar=lv_arg,instances=nil,regvars=nil},
                                       scope=trans (LvarMap.add(lv,F64_LOCAL,env)) scope}
                                 )
                               else default()
@@ -3093,6 +3098,7 @@ structure OptLambda : OPT_LAMBDA =
    fun exec (e: LambdaExp) (scope: LambdaExp) : LambdaExp =
        let val lv = Lvars.newLvar()
        in LET{pat=[(lv,[],unit_Type)],
+              owns=false,
               bind=e,scope=scope}
        end
    fun assign tyvars aType instances a (i:int) e =
@@ -3115,6 +3121,7 @@ structure OptLambda : OPT_LAMBDA =
                     val S = mk_subst (fn () => "table2d_simplify.word_table2d0") (tyvars,instances)
                     val aType' = on_Type S aType
                 in LET{pat=[(lv,nil,aType')],
+                       owns=false,
                        bind=PRIM(CCALLprim{name="word_table0",instances=instances,
                                            tyvars=tyvars,
                                            Type=ARROWtype([iType],rv0,[aType],rv)},[n]),
@@ -3132,6 +3139,7 @@ structure OptLambda : OPT_LAMBDA =
                     val S = mk_subst (fn () => "table2d_simplify.word_table2d0_init") (tyvars,instances)
                     val aType' = on_Type S aType
                 in LET{pat=[(lv,nil,aType')],
+                       owns=false,
                        bind=PRIM(CCALLprim{name="word_table_init",instances=instances,
                                            tyvars=tyvars,
                                            Type=ARROWtype([iType,eType],rv0,[aType],rv)},[n,e]),
@@ -3235,11 +3243,11 @@ structure OptLambda : OPT_LAMBDA =
                    in FN{pat=pat, body=APP(lamb,arg,NONE)}
                    end
                   | _ => lamb)
-             | LET{pat,bind,scope} =>
+             | LET{pat,owns,bind,scope} =>
                  let val bind' = inverse_eta env bind
                      val lvars = map #1 pat
                      val env' = List.foldl(fn (lv,acc) => LvarMap.add(lv,NOTFIXBOUND,acc)) env lvars
-                 in LET{pat=pat,bind=bind',scope=inverse_eta env' scope}
+                 in LET{pat=pat,owns=owns,bind=bind',scope=inverse_eta env' scope}
                  end
              | FIX{functions,scope} =>
               let val env' = List.foldr (fn ({lvar, tyvars, Type, ...},env) =>
@@ -3375,7 +3383,7 @@ structure OptLambda : OPT_LAMBDA =
                in FIX{functions=functions',
                       scope=uc (LvarMap.plus(env,env')) scope}
                end
-         | LET{pat=[(lv,tyvars,tau)],bind=b as VAR{lvar,instances,regvars=[]},scope} =>
+         | LET{pat=[(lv,tyvars,tau)],owns=_,bind=b as VAR{lvar,instances,regvars=[]},scope} =>
                if !uncurrying then
                (case LvarMap.lookup env lvar of
                     SOME (SOME (n,(tvs,ARROWtype(ts,rv0,_,rv)))) =>
@@ -3454,7 +3462,7 @@ structure OptLambda : OPT_LAMBDA =
        end
    and fixify env e =
        case e of
-           LET{pat=[(lv,tyvars,tau)],bind=b as VAR _, scope} =>
+           LET{pat=[(lv,tyvars,tau)],owns=_,bind=b as VAR _, scope} =>
                (case uc env b of
                     b as FN _ =>
                         FIX{functions= [{lvar=lv,regvars=[],tyvars=tyvars,

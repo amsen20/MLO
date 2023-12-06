@@ -73,8 +73,13 @@ datatype ('a,'b) LambdaPgm = PGM of
 		      free: (lvar list * excon list) option}  (*region inference without dangling pointers*)
        | LETREGION_B of {B: effect list ref, discharged_phi: effect list ref, body: ('a,'b)trip}
        | LET      of {pat : (lvar * (tyvar*effect option) list * Type * place option) list,   (* memo: delete tyvar list *)
-		      bind : ('a,'b)trip,
+		      
+          (* temporary for adding owner values *)
+          owns:  bool,
+          
+          bind : ('a,'b)trip,
 		      scope: ('a,'b)trip}
+       
        | FIX      of {shared_clos: 'a,
                       functions : {lvar : lvar,
                                    occ: (il * (il * cone -> il * cone)) ref list ref,
@@ -157,7 +162,7 @@ and mkPhiExp e acc =
         UB_RECORD(ts) => foldl (uncurry mkPhiTr) acc ts
       | FN {body, ...} => mkPhiTr body acc
       | LETREGION_B{B, body, ...} => mkPhiTr body (!B @ acc)
-      | LET{pat,bind,scope} => mkPhiTr scope (mkPhiTr bind acc)
+      | LET{pat,owns,bind,scope} => mkPhiTr scope (mkPhiTr bind acc)
       | FIX{shared_clos,functions,scope} =>
         let val acc' = foldl (fn ({epss as ref arreffs,bind, ...}, acc) =>
                                  mkPhiTr bind (arreffs @ acc))
@@ -209,7 +214,7 @@ fun letregionBound tr =
               UB_RECORD ts => foldl (uncurry f) acc ts
             | FN {body, ...} => f body acc
             | LETREGION_B{B, body, ...} => f body (!B @ acc)
-            | LET{pat,bind,scope} => f scope (f bind acc)
+            | LET{pat,owns,bind,scope} => f scope (f bind acc)
             | FIX{shared_clos,functions,scope} =>
               let val acc' = foldl (fn ({epss as ref arreffs,bind, ...}, acc) =>
                                        f bind acc)
@@ -485,7 +490,7 @@ fun mkLay (omit_region_info: bool)
                    finish = if n>=3 then ")" else "",
                    childsep = NOSEP, indent = 6,
                    children = [layTrip(t1,2)]}
-            | LET{pat, bind, scope} => layout_let_fix_and_exception lamb
+            | LET{pat, owns, bind, scope} => layout_let_fix_and_exception lamb
             | FIX _ => layout_let_fix_and_exception lamb
             | REF(alloc, t) =>
               let val s = alloc_string alloc
@@ -601,9 +606,9 @@ fun mkLay (omit_region_info: bool)
       and layout_let_fix_and_exception lexp =
           let fun layout_rec lexp =
                   case lexp of
-                      LET{pat, bind, scope = t2 as TR(e2,_,_)} =>
+                      LET{pat, owns, bind, scope = t2 as TR(e2,_,_)} =>
                       let val (binds, body) = layout_rec e2
-                      in (mk_valbind(pat,bind)::binds, body)
+                      in (mk_valbind(pat,owns,bind)::binds, body)
                       end
                     | FIX({shared_clos,functions,scope = t2 as TR(e2, _,_)}) =>
                       let val (binds', body) = layout_rec e2
@@ -627,9 +632,9 @@ fun mkLay (omit_region_info: bool)
                      childsep=LEFT " in "}
           end
 
-      and mk_valbind (pat, t) =
+      and mk_valbind (pat, owns, t) =
           let val child1 = layPatLet pat
-          in NODE{start = "val ",finish="",childsep=RIGHT " = ",
+          in NODE{start = (if owns then "o" else "") ^ "val ",finish="",childsep=RIGHT " = ",
                   indent=4,  children=[child1, layTrip(t,0)] }
           end
 

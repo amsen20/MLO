@@ -443,6 +443,7 @@ struct
              retract(B, body, delta_phi_body, B1, discharged_phi, phi)
            end
        | Exp.LET{pat = [(lvar, alphas, tau1',rho1')],
+                 owns=_,
                  bind = bind (*as Exp.TR(_,Exp.Mus([(tau1',rho1')]), phi1')*),   (* mads, 13/3/97 *)
                  scope} =>
            (* case for one variable *)
@@ -460,7 +461,7 @@ struct
             in
                (B, d1 && d2)
             end
-       | Exp.LET{pat = nil, bind = bind, scope} =>  (* wild card *)
+       | Exp.LET{pat = nil, owns=_, bind = bind, scope} =>  (* wild card *)
            let val (B,d1) = R(B,rse,bind)
                val (B,d2) = R(B,rse,scope)
            in (B, d1 && d2)

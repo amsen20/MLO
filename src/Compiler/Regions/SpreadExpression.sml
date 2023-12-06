@@ -852,19 +852,20 @@ struct
                        tvs)
         end
 
-   | E.LET{pat=nil, bind = e1_ML, scope = e2_ML} =>   (* wild card *)
+   | E.LET{pat=nil, owns=owns, bind = e1_ML, scope = e2_ML} =>   (* wild card *)
         let
            val (B, t1 as E'.TR(e1, meta1, phi1), _, tvs1) = S(B, e1_ML, false, NOTAIL)
            val mus = unMus "S.LET-wildcard" meta1
            val (B, t2 as E'.TR(e2, meta2, phi2), cont, tvs2) = S(B, e2_ML, toplevel, cont)
         in
           (B, E'.TR(E'.LET{pat = nil,
+                           owns = owns,
                            bind = t1, scope = t2}, meta2, Eff.mkUnion([phi1,phi2])),
            cont,
            spuriousJoin tvs1 tvs2)
         end
 
-   | E.LET{pat, bind = e1_ML, scope = e2_ML} =>
+   | E.LET{pat, owns=owns, bind = e1_ML, scope = e2_ML} =>
         let
            val B = pushIfNotTopLevel(toplevel,B) (* for retract *)
            val (B, t1 as E'.TR(e1, meta, phi1), _, tvs1) = S(B, e1_ML, false, NOTAIL)
@@ -890,6 +891,7 @@ struct
            val (B, t2 as E'.TR(e2, meta2, phi2),cont,tvs2) = spreadExp(B,rse,e2_ML,toplevel,cont)
         in
           retract(B, E'.TR(E'.LET{pat = pat'_list,
+                                  owns = owns,
                                   bind = t1, scope = t2}, meta2, Eff.mkUnion([phi1,phi2])),
                   cont,
                   spuriousJoin tvs1 tvs2)

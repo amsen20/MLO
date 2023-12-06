@@ -718,17 +718,17 @@ fun toJs (C:Context.t) (e0:Exp) : Js =
     let val lvs = map ($ o prLvar C o #1) pat
     in $"function" & seq lvs & $"{ " & returnJs(toJs C body) & $" }"
     end
-  | L.LET {pat=[p],bind,scope} => 
+  | L.LET {pat=[p],owns,bind,scope} => 
     let val lv = #1 p
     in varJs (prLvar C lv) 
              (unPar(toJs C bind))
              (toJs C scope)
     end
-  | L.LET {pat=[],bind,scope} => (* memo: why not sequence? *)
+  | L.LET {pat=[],owns,bind,scope} => (* memo: why not sequence? *)
     varJs ("__dummy") 
           (unPar(toJs C bind))
           (toJs C scope)
-  | L.LET {pat,bind,scope} => 
+  | L.LET {pat,owns,bind,scope} => 
     let val lvs = map #1 pat
         val binds = case bind of L.PRIM(UB_RECORDprim,binds) => binds
                                | _ => die "LET.unimplemented"

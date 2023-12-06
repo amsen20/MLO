@@ -60,8 +60,13 @@ signature REGION_EXP = sig
 		     free: (lvar list * excon list) option}  (*region inference without dangling pointers*)
       | LETREGION_B of {B: effect list ref, discharged_phi: effect list ref, body: ('a,'b)trip}
       | LET      of {pat : (lvar * (tyvar*effect option) list * Type * place option) list,   (* memo: delete tyvar list *)
-		     bind : ('a,'b)trip,
+		     
+         (* temporary for adding owner values *)
+         owns:  bool,
+         
+         bind : ('a,'b)trip,
 		     scope: ('a,'b)trip}
+
       | FIX      of {shared_clos: 'a,
                      functions : {lvar : lvar,
                                   occ: (il * (il * cone -> il * cone)) ref list ref,

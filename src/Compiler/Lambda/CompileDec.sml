@@ -134,6 +134,7 @@ structure CompileDec: COMPILE_DEC =
 
       fun monoLet ((lv,tau,lamb1),lamb2) =
         LET{pat=[(lv,[],tau)],
+            owns=false,
             bind=lamb1,
             scope=lamb2}
       fun If (e,e1,e2) =
@@ -1207,6 +1208,7 @@ Det finder du nok aldrig ud af.*)
                         let
                             val lvar = Lvars.newLvar()
                             val f' = fn x => LET{pat=[(lvar,nil,tau)],
+                                                 owns=false,
                                                  bind=decon,
                                                  scope= x}
                             val env'' = declarePath(path0, lvar, tau, CE.emptyCEnv)
@@ -1267,6 +1269,7 @@ Det finder du nok aldrig ud af.*)
                   let
                       val lvar = Lvars.newLvar()
                       val f' = fn x => LET{pat=[(lvar,nil,tau)],
+                                           owns=false,
                                            bind=select,
                                            scope = x}
                       val env'' = declarePath(path0,lvar,tau,CE.emptyCEnv)
@@ -1327,10 +1330,12 @@ Det finder du nok aldrig ud af.*)
              in
                  case tyvars of
                      nil => (f o f', LET {pat = [(lvar, tyvars, tau)],
+                                          owns=false,
                                           bind = e',
                                           scope = e},
                              CE.plus(env, env'))
                    | _ => (f, LET {pat = [(lvar, tyvars, tau)],
+                                   owns=false,
                                    bind = f' e',
                                    scope = e},
                            env)
@@ -3031,9 +3036,8 @@ the 12 lines above are very similar to the code below
            compileValbind env (topLevel, valbind)
 
          (* temporary for owner values *)
-         (* TODO add owner value data in returned enviroment *)
          | OVALdec(_, tyvars, valbind) =>
-             compileValbind env (topLevel, valbind)
+             compileOValbind env (topLevel, valbind)
 
          | UNRES_FUNdec _ =>
              die "compileDec(UNRES_FUN)"
@@ -3144,7 +3148,7 @@ the 12 lines above are very similar to the code below
             (case to_TypeInfo i
                of SOME (TypeInfo.PLAINvalbind_INFO{tyvars,Type,...}) =>
                  let
-                   val (env1, f1) = compile_binding env (topLevel, pat, exp, (tyvars, Type))
+                   val (env1, f1) = compile_binding env (topLevel, pat, false, exp, (tyvars, Type))
                  in case vbOpt
                       of SOME vb =>
                         let val (envRest, f2) = compileValbind env (topLevel,vb)
@@ -3160,6 +3164,26 @@ the 12 lines above are very similar to the code below
                end
       end
 
+    (* temporary added for owner value bindings *)
+
+    and compileOValbind env (topLevel, valbind) : CE.CEnv * (LambdaExp -> LambdaExp) =
+      case valbind
+        of PLAINvalbind(i, pat, exp, vbOpt) =>
+          (case to_TypeInfo i
+              of SOME (TypeInfo.PLAINvalbind_INFO{tyvars,Type,...}) =>
+                let
+                  val (env1, f1) = compile_binding env (topLevel, pat, true, exp, (tyvars, Type))
+                in case vbOpt
+                    of SOME vb =>
+                      let val (envRest, f2) = compileOValbind env (topLevel,vb)
+                      in (env1 plus envRest, f1 o f2)
+                      end
+                      | NONE => (env1, f1)
+                end
+              | _ => die "compileOValbind: no type info")
+
+          | RECvalbind(_, vb) =>
+              die "compileOValbind: owner values are only applicable to variables not rec"
 
        (* A datatype declaration is compiled by compiling the semantic
         * object TyEnv associated with it. The type environment
@@ -3271,11 +3295,11 @@ the 12 lines above are very similar to the code below
 
    *)
 
-    and compile_binding env (topLevel, pat, exp, (tyvars, Type))
+    and compile_binding env (topLevel, pat, owns, exp, (tyvars, Type))
         : CE.CEnv * (LambdaExp -> LambdaExp) =
       if is_wild_pat pat then
         let val bind = compileExp env exp
-            val f = fn scope => LET {pat = nil, bind = PRIM(DROPprim,[bind]), scope = scope}
+            val f = fn scope => LET {pat = nil, owns = owns, bind = PRIM(DROPprim,[bind]), scope = scope}
         in (CE.emptyCEnv, f)
         end
       else
@@ -3296,7 +3320,7 @@ the 12 lines above are very similar to the code below
                                              else b
                                            | _ => b) bind is
                val f = fn scope => LET {pat = [(lvar, tyvars', tau')],
-                                        bind = bind, scope = scope}
+                                        owns=owns, bind = bind, scope = scope}
            in (env', f)
            end
           | NONE =>
@@ -3313,6 +3337,7 @@ the 12 lines above are very similar to the code below
                in
                  case compile_decdag compile_no (obj,tau') raise_something NONE env decdag
                    of ([], lexp) => LET {pat = [(lvar_switch, tyvars', tau')],
+                                         owns = owns,
                                          bind = compileExp env exp,
                                          scope = lexp}
                     | _ =>

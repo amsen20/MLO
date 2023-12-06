@@ -127,8 +127,13 @@ signature LAMBDA_EXP =
       | F64      of string
       | FN       of {pat : (lvar * Type) list, body : LambdaExp}
       | LET      of {pat : (lvar * tyvar list * Type) list,
+                     
+                     (* temporary for owner values *)
+                     owns : bool,
+                     
                      bind : LambdaExp,
                      scope: LambdaExp}
+      
       | LETREGION of {regvars: regvar list,
                       scope: LambdaExp}
       | FIX      of {functions : {lvar : lvar,

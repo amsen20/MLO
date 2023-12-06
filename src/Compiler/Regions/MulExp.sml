@@ -1858,7 +1858,8 @@ struct
                           body = body'},
                 dep)
             end
-        | RegionExp.LET{pat ,bind,scope} =>
+          (* ownership is not used in mul expression for now *)
+        | RegionExp.LET{pat,owns=_,bind,scope} =>
             let val (bind', dep) = mk_deptr(EE,bind, dep)
                 val (EE_extended, Xi_refs, dep)  = foldr (uncurry extend_env_at_let) (EE,[],dep) pat
                 val pat' = map (fn ((lvar, tys, ty,p), Xi_ref) => (lvar,ref[],tys,ref[],ty,p,Xi_ref))

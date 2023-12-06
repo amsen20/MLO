@@ -148,6 +148,10 @@ structure LambdaExp : LAMBDA_EXP =
       | F64      of string
       | FN       of {pat : (lvar * Type) list, body : LambdaExp}
       | LET      of {pat : (lvar * tyvar list * Type) list,
+                     
+                     (* temporary for owner values *)
+                     owns : bool,
+
                      bind : LambdaExp,
                      scope: LambdaExp}
       | LETREGION of {regvars: regvar list,
@@ -202,7 +206,7 @@ structure LambdaExp : LAMBDA_EXP =
         | REAL _ => new_acc
         | F64 _ => new_acc
         | FN{pat,body} => foldTD fcns (foldl' (foldType g) new_acc (map #2 pat)) body
-        | LET{pat,bind,scope} => foldTD fcns (foldTD fcns (foldl' (foldType g) new_acc (map #3 pat)) bind) scope
+        | LET{pat,owns,bind,scope} => foldTD fcns (foldTD fcns (foldl' (foldType g) new_acc (map #3 pat)) bind) scope
         | LETREGION {regvars, scope} => foldTD fcns new_acc scope
 
         | FIX{functions,scope} => foldTD fcns (foldl' (foldTD fcns) (foldl' (foldType g) new_acc (map #Type functions))  (map #bind functions)) scope
@@ -353,7 +357,7 @@ structure LambdaExp : LAMBDA_EXP =
           | REAL _                      => ()
           | F64 _                       => ()
           | FN _                        => ()
-          | LET {bind,scope,...}        => (safe bind; safe scope)
+          | LET {bind,scope,...}        => (safe bind; safe scope)          
           | LETREGION _                 => raise NotSafe            (* memo: maybe safe? *)
           | FIX {scope,...}             => safe scope
           | APP _                       => raise NotSafe
@@ -1258,9 +1262,9 @@ structure LambdaExp : LAMBDA_EXP =
           let
             fun layout_rec lexp =
                   case lexp of
-                    LET{pat, bind, scope} =>
+                    LET{pat, owns, bind, scope} =>
                     let val (binds, body, frame) = layout_rec scope
-                    in (mk_valbind(pat,bind)::binds, body, frame)
+                    in (mk_valbind(pat, owns, bind)::binds, body, frame)
                     end
                   | FIX({functions,scope}) =>
                     let val (binds', body, frame) = layout_rec scope
@@ -1290,11 +1294,11 @@ structure LambdaExp : LAMBDA_EXP =
                     childsep=PP.LEFT " in "}
           end
 
-      and mk_valbind (pat, e) =
+      and mk_valbind (pat, owns, e) =
         let
             val child1 = layPatLet pat   (*NB*)
          in
-            PP.NODE{start = "val ",finish="",childsep=PP.RIGHT " = ",
+            PP.NODE{start = (if owns then "o" else "") ^ "val ",finish="",childsep=PP.RIGHT " = ",
                  indent=4,  children=[child1, layoutLambdaExp(e,0)] }
         end
       and mk_excon_binding (excon, ty_opt) =
@@ -1740,11 +1744,14 @@ structure LambdaExp : LAMBDA_EXP =
                 Pickle.con1 FN (fn FN a => a | _ => die "pu_LambdaExp.FN")
                 (Pickle.convert (fn (p,e) => {pat=p,body=e}, fn {pat=p,body=e} => (p,e))
                  (Pickle.pairGen0(Pickle.listGen(Pickle.pairGen0(Lvars.pu,pu_Type)),pu_LambdaExp)))
+            
             fun fun_LET pu_LambdaExp =
                 Pickle.con1 LET (fn LET a => a | _ => die "pu_LambdaExp.LET")
-                (Pickle.convert (fn (p,b,s) => {pat=p,bind=b,scope=s}, fn {pat=p,bind=b,scope=s} => (p,b,s))
+                (Pickle.convert (fn (p,b,s) => {pat=p,owns=false,bind=b,scope=s}, fn {pat=p,owns=_,bind=b,scope=s} => (p,b,s))
                  (Pickle.tup3Gen0(Pickle.listGen(Pickle.tup3Gen0(Lvars.pu,pu_tyvars,pu_Type)),
+                                  (* Pickle.bool, *)
                                   pu_LambdaExp, pu_LambdaExp)))
+            
             fun fun_FIX pu_LambdaExp =
                 let val pu_function =
                         Pickle.convert (fn ((lv,rs,tvs),t,cs,e) =>
@@ -1868,7 +1875,7 @@ structure LambdaExp : LAMBDA_EXP =
         | REAL _ => acc
         | F64 _ => acc
         | FN{pat,body} => tyvars_Exp s body (foldl (fn ((_,t),acc) => tyvars_Type s t acc) acc pat)
-        | LET{pat,bind,scope} =>
+        | LET{pat,owns,bind,scope} =>
           let val s' = foldl (fn ((_,tvs,_),s) => TVS.addList tvs s) s pat
             val acc = foldl (fn ((_,_,t),acc) => tyvars_Type s' t acc) acc pat
             val acc = tyvars_Exp s' bind acc
