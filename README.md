@@ -1,14 +1,6 @@
-## MLKit
+## OwnMyLvar
 
-The [MLKit](http://elsman.com/mlkit) is a compiler toolkit for the
-Standard ML language, including **The MLKit with Regions**, which features a native
-backend for the x64 architecture, based on region inference, and
-**SMLtoJs**, which features a JavaScript backend targeting web browsers. The two
-compilers share the same frontend and compilation management scheme.
-
-The MLKit covers all of Standard ML, as defined in the 1997 edition of
-[The Definition of Standard ML](https://mitpress.mit.edu/books/definition-standard-ml-revised-edition) and supports most of the [Standard ML
-Basis Library](http://elsman.com/mlkit/basis.html).
+TODO
 
 ## Test Statistics and Benchmarking
 
