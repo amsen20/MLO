@@ -291,6 +291,11 @@ structure Compile: COMPILE =
 
                end handle _ => die "cannot form rse'")
              | _ => die "program does not have type frame"
+        
+        (* Effect check passage for ensuring allocations in owned regions *)
+        val _ = EffCheck.checkEffects
+                (fn s => (TextIO.output(!Flags.log, s); TextIO.flushOut(!Flags.log))) 
+                (cone,rse',spread_lamb_exp)
 (*
         val (rhos_rse',epss_rse') = SpreadExp.RegionStatEnv.places_effectvarsRSE' rse'
 *)

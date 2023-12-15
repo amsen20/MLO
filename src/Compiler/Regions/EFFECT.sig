@@ -68,6 +68,10 @@ sig
 
   val acc_rho           : effect -> effect list -> effect list
 
+  (* do_put (eps, rhos) *)
+  (* Checks if there is any PUT effect from eps that is also reachable from rhos *)
+  val do_put            : effect list * effect list -> bool
+
   (* mk_phi(eps_node): returns list of atomic effects in the effect which has
      eps_node as its primary effect variable. eps_node must be an effect variable *)
 

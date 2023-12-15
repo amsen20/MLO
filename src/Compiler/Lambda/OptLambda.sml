@@ -74,9 +74,11 @@ structure OptLambda : OPT_LAMBDA =
                                         * because polymorphism in regions must co-work
                                         * with polymorphism in type variables *)
 
+    (* Contract optimization causes some owner value checking to be removed *)
+    (* Because of that, it is turned off by defauult now *)
     val contract_p = Flags.add_bool_entry
          {long="contract", short=NONE, menu=["Optimiser Control", "contract"],
-          item=ref true, neg=true, desc=
+          item=ref false, neg=false, desc=
           "Contract is responsible for inlining, specialization,\n\
            \elimination of dead code, and much else (Lambda\n\
            \Expression Optimiser)."}

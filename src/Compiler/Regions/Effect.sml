@@ -2508,6 +2508,23 @@ struct
         | _ => (say "No info for eps\n";
                 say_eps eps;
                 die ("represents"))
+  
+  fun do_put (eff_nodes, effect_rhos) = 
+    let
+      val phi_lists = map mk_phi eff_nodes
+      val phi_nodes= foldl (fn (it_ls, ls) => it_ls@ls) [] phi_lists
+      val rho_put_nodes = foldl (
+        fn (effect_rho, nodes) => case G.find_info effect_rho of
+          RHO{put=SOME node, ...} => node::nodes
+          | _ => nodes
+      ) [] effect_rhos
+      
+      val in_nodes = fn node=> (
+        foldl (fn (it_node, cur) => (DiGraph.eq_nodes (it_node, node) orelse cur)) false phi_nodes 
+      )
+    in
+      foldl (fn (i, cur) => i orelse cur) false (map in_nodes rho_put_nodes)
+    end
 end
 
 (*
