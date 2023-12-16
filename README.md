@@ -72,6 +72,12 @@ $ ./autobuild
 $ ./configure --with-compiler=mlkit
 $ make mlkit # might take couple of minutes
 ```
+### Docker
+```bash
+$ docker build -t oml .
+$ docker run -it oml
+#: you can run all tests in the container without sudo
+```
 
 ## Tests and samples
 The tests and samples are in [ownershipdemo](/ownershipdemo).
