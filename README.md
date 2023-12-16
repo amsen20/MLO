@@ -1,6 +1,53 @@
 ## OwnMyLvar
+OwnMyLvar (OML) provides users with a syntax (owner values), that guarantees the segregation of regions. If this condition is not met, a compile error will occur.
+The introduced syntax enables variables (value bindings) to own the region in which the value is placed. As a result, as long as the variable stays in the scope, there can be no new allocation other than through the variable.
+Presently, inter-module level code and reference mutating are not supported in OML, thus, no allocations can take place within the variable region as long as it remains within the scope
 
-TODO
+For example in the following code:
+```sml
+let 
+  val a = (*some list which will last forever*)
+  val b = (*some list will be popped soon*)
+in
+  if sum(a) > sum(b) then a else b
+end
+```
+
+Lists a and b have to be on the same region because of the if statement, but if we change the code to the following:
+
+```sml
+let 
+  val a = (*some list which will last forever*)
+  val b = (*some list will be popped soon*)
+in
+  if sum(a) > sum(b) then a else (cp b)
+end
+```
+
+Then a, and b will be placed in two regions. Now if the programmer uses OML, and marks a as owner:
+
+```sml
+let 
+  oval a = (*some list which will last forever*)
+  val b = (*some list will be popped soon*)
+in
+  if sum(a) > sum(b) then a else b
+end
+```
+
+This code will result in a compile error telling that b is going to allocate some memory in the owned region of a and the following code will not have any compile error:
+
+```sml
+let 
+  oval a = (*some list which will last forever*)
+  val b = (*some list will be popped soon*)
+in
+  if sum(a) > sum(b) then a else (cp b)
+end
+```
+
+In summary, OML helps the programmer separate variable regions.
+
 
 ## Build
 
