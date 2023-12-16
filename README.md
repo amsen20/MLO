@@ -62,7 +62,9 @@ $ tar xzf mlkit-bin-dist-linux.tgz
 $ cd mlkit-bin-dist-linux
 $ sudo make install
 $ sudo mkdir /usr/local/etc/mlkit
-$ sudo echo "SML_LIB /usr/local/lib/mlkit" > /usr/local/etc/mlkit/mlb-path-map
+$ sudo -s
+$ echo "SML_LIB /usr/local/lib/mlkit" > /usr/local/etc/mlkit/mlb-path-map
+$ Ctrl + d
 $ cd ..
 $ git clone https://github.com/amsen20/OwnML.git
 $ cd OwnML
