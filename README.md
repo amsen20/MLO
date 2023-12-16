@@ -73,6 +73,7 @@ $ ./configure --with-compiler=mlkit
 $ make mlkit # might take couple of minutes
 ```
 ### Docker
+If you want to use docker, please don't build using the other approach or if you have please `make clean`.
 ```bash
 $ docker build -t oml .
 $ docker run -it oml
