@@ -45,7 +45,7 @@ Find some $X$ where $l_i \leq x_i \leq r_i$ and $F(X)$ is maximum. For solving t
 2. Generate $100$ samples from mutating $X$.
 3. Choose the maximum sample and store it in $X$.
 
-This algorithm first is implemented staightforward in [basic_error3.sml](/ownershipdemo/eval.sml), and then in [basic_error3.sml](/ownershipdemo/own_eval.sml) I tried to separate samples regions from the argument region so that they can be freed in each iteration.
+This algorithm first is implemented staightforward in [eval.sml](/ownershipdemo/eval.sml), and then in [own_eval.sml](/ownershipdemo/own_eval.sml) I tried to separate samples regions from the argument region so that they can be freed in each iteration.
 You can run the codes using following commands:
 ```bash
 $ SML_LIB=$PWD bin/mlkit -no_gc -Pole ownershipdemo/eval.sml && /usr/bin/time -v ./run
