@@ -232,6 +232,7 @@ struct
     fun unwrap (B:cone,rse:rse,tr : (place,unit)Exp.trip) : unit =
       traverse_region_exp (tr, []) 
         handle PUT_TO_FROZED => die "tried to allocate memory in a owned region"
+              | _ => ()
   in
     unwrap
   end
