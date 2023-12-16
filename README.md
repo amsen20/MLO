@@ -2,21 +2,28 @@
 
 TODO
 
-## Installation
+## Build
 
 For installation in details please look at the main MLKit [installation guide](https://github.com/melsman/mlkit?tab=readme-ov-file#installation). Here is a short approach for building the project:
 
 ### Linux
 ```bash
+$ sudo apt-get update
+$ sudo apt-get install -y gcc autoconf make
 $ wget https://github.com/melsman/mlkit/releases/latest/download/mlkit-bin-dist-linux.tgz
 $ tar xzf mlkit-bin-dist-linux.tgz
 $ cd mlkit-bin-dist-linux
-$ make install
+$ sudo make install
 $ sudo mkdir /usr/local/etc/mlkit
 $ sudo echo "SML_LIB /usr/local/lib/mlkit" > /usr/local/etc/mlkit/mlb-path-map
+$ git clone https://github.com/amsen20/OwnML.git
+$ cd OwnML
+$ ./autobuild
+$ ./configure --with-compiler=mlkit
+$ make mlkit
+$ make mlkit_libs
 ```
-
-### MacOS
+### Docker
 ```bash
 ```
 
@@ -51,4 +58,4 @@ You can run the codes using following commands:
 $ SML_LIB=$PWD bin/mlkit -no_gc -Pole ownershipdemo/eval.sml && /usr/bin/time -v ./run
 $ SML_LIB=$PWD bin/mlkit -no_gc -Pole ownershipdemo/own_eval.sml && /usr/bin/time -v ./run
 ```
-The result show that the memory usage in the separated version of the code is divided by $1/3$ despite of having more copying happening.
+The result shows that the memory usage in the separated version of the code is 3 times less than the basic version, despite of having more copying happening.
