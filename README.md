@@ -63,15 +63,12 @@ $ cd mlkit-bin-dist-linux
 $ sudo make install
 $ sudo mkdir /usr/local/etc/mlkit
 $ sudo echo "SML_LIB /usr/local/lib/mlkit" > /usr/local/etc/mlkit/mlb-path-map
+$ cd ..
 $ git clone https://github.com/amsen20/OwnML.git
 $ cd OwnML
 $ ./autobuild
 $ ./configure --with-compiler=mlkit
-$ make mlkit
-$ make mlkit_libs
-```
-### Docker
-```bash
+$ make mlkit # might take couple of minutes
 ```
 
 ## Tests and samples
@@ -79,7 +76,7 @@ The tests and samples are in [ownershipdemo](/ownershipdemo).
 
 You can compile any of them using following command (use these command from root of the project):
 ```bash
-$ SML_LIB=$PWD bin/mlkit -no_gc ownershipdemo/any_test.sml
+$ sudo bin/mlkit -no_gc ownershipdemo/any_test.sml
 ```
 and then run the compiled program using `./run`.
 ### Basic tests:
@@ -102,7 +99,7 @@ Find some $X$ where $l_i \leq x_i \leq r_i$ and $F(X)$ is maximum. For solving t
 This algorithm first is implemented staightforward in [eval.sml](/ownershipdemo/eval.sml), and then in [own_eval.sml](/ownershipdemo/own_eval.sml) I tried to separate samples regions from the argument region so that they can be freed in each iteration.
 You can run the codes using following commands:
 ```bash
-$ SML_LIB=$PWD bin/mlkit -no_gc -Pole ownershipdemo/eval.sml && /usr/bin/time -v ./run
-$ SML_LIB=$PWD bin/mlkit -no_gc -Pole ownershipdemo/own_eval.sml && /usr/bin/time -v ./run
+$ sudo bin/mlkit -no_gc -Pole ownershipdemo/eval.sml && /usr/bin/time -v ./run
+$ sudo bin/mlkit -no_gc -Pole ownershipdemo/own_eval.sml && /usr/bin/time -v ./run
 ```
 The result shows that the memory usage in the separated version of the code is 3 times less than the basic version, despite of having more copying happening.
